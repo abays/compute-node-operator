@@ -206,12 +206,12 @@ func (r *ReconcileComputeNodeOpenStack) Reconcile(request reconcile.Request) (re
 	objs = append(objs, manifests...)
 
 	// Generate the Neutron objects
-	manifests, err = bindatautil.RenderDir(filepath.Join(ManifestPath, "neutron"), &data)
-	if err != nil {
-		log.Error(err, "Failed to render neutron manifests : %v")
-		return reconcile.Result{}, err
-	}
-	objs = append(objs, manifests...)
+	// manifests, err = bindatautil.RenderDir(filepath.Join(ManifestPath, "neutron"), &data)
+	// if err != nil {
+	// 	log.Error(err, "Failed to render neutron manifests : %v")
+	// 	return reconcile.Result{}, err
+	// }
+	// objs = append(objs, manifests...)
 
 	// Apply the objects to the cluster
 	for _, obj := range objs {
