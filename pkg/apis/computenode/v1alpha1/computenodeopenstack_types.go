@@ -34,6 +34,10 @@ type ComputeNodeOpenStackSpec struct {
 	Compute NovaCompute `json:"compute,omitempty"`
 	// Network/Neutron configuration
 	Network NeutronNetwork `json:"network,omitempty"`
+	// Performance configuration
+	Performance PerformanceConfig `json:"performance,omitempty"`
+	// Sriov configuration, one item per interface
+	Sriov []SriovConfig `json:"sriov,omitempty"`
 }
 
 // InfraDaemonSet defines the daemon set required
@@ -69,16 +73,37 @@ type NovaCompute struct {
 
 // NeutronNetwork defines neutron configuration parameters
 type NeutronNetwork struct {
-	Nic				 string `json:"nic"`
-	BridgeMappings   string      `json:"bridgeMappings,omitempty"`
-	MechanishDrivers string      `json:"mechanismDrivers,omitempty"`
-	ServicePlugings  string      `json:"servicePlugins,omitempty"`
-	Sriov            SriovConfig `json:"sriov,omitempty"`
+	Nic              string `json:"nic"`
+	BridgeMappings   string `json:"bridgeMappings,omitempty"`
+	MechanishDrivers string `json:"mechanismDrivers,omitempty"`
+	ServicePlugings  string `json:"servicePlugins,omitempty"`
 }
 
-// SriovConfig defines SRIOV config parameters, such as nic information.
+// PerformanceConfig defines the OS tuning parameters
+type PerformanceConfig struct {
+	Hugepages HugepagesConfig `json:"hugepages,omitempty"`
+	Cpu       CpuConfig       `json:"cpu,omitempty"`
+}
+
+// HugepagesConfig defines the hugepages parameters
+type HugepagesConfig struct {
+	DefaultHugepagesSize string              `json:"defaultHugepagesSize"`
+	Pages                []map[string]string `json:"pages,omitempty"`
+}
+
+// CpuConfig defines CPU configuration parameters
+type CpuConfig struct {
+	Isolated string `json:"isolated"`
+	Reserved string `json:"reserved"`
+}
+
+// SriovConfig defines SRIOV config parameters, such as nic information
 type SriovConfig struct {
-	DevName string `json:"devName"`
+	Interface  string `json:"interface"`
+	NumVfs     int32  `json:"numVfs,omitempty"`
+	Network    string `json:"network"`
+	DeviceType string `json:"deviceType"`
+	Mtu        int32  `json:"mtu,omitempty"`
 }
 
 // NodeToDelete defines the name of the node to delete and if automatic drain is needed

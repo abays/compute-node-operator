@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	machinev1beta1 "github.com/openshift/cluster-api/pkg/apis/machine/v1beta1"
+	//sriovnetworkv1 "github.com/openshift/sriov-network-operator/pkg/apis/sriovnetwork/v1"
 )
 
 var log = logf.Log.WithName("controller_computenodeopenstack")
@@ -89,6 +90,14 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	if err != nil {
 		return err
 	}
+
+	// err = c.Watch(&source.Kind{Type: &sriovnetworkv1.SriovNetworkNodePolicy{}}, &handler.EnqueueRequestForOwner{
+	// 	IsController: true,
+	// 	OwnerType:    &computenodev1alpha1.ComputeNodeOpenStack{},
+	// })
+	// if err != nil {
+	// 	return err
+	// }
 
 	err = c.Watch(&source.Kind{Type: &batchv1.Job{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
@@ -160,12 +169,15 @@ func (r *ReconcileComputeNodeOpenStack) Reconcile(request reconcile.Request) (re
 		return reconcile.Result{}, err
 	}
 
+	// Available nodes in the role's machineset
+	var nodeCount int32
+
 	specMDS, err := util.CalculateHash(instance.Spec)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 	if reflect.DeepEqual(specMDS, instance.Status.SpecMDS) {
-		err = ensureMachineSetSync(r.client, instance)
+		nodeCount, err = ensureMachineSetSync(r.client, instance)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -212,6 +224,27 @@ func (r *ReconcileComputeNodeOpenStack) Reconcile(request reconcile.Request) (re
 	// 	return reconcile.Result{}, err
 	// }
 	// objs = append(objs, manifests...)
+
+	// Generate SRIOV objects
+	// HACK: Extract the SRIOV data array and turn it into singular Sriov<Field> template values.
+	//       Do not attempt if there are no nodes available in this role's machineset, otherwise the
+	//       SRIOV operator will throw an error when trying to apply any SriovNetworkNodePolicy that
+	//       targets the nodes with the role
+	if sriovArray, ok := data.Data["Sriov"].([]map[string]interface{}); ok && nodeCount > 0 {
+		for _, sriovRenderData := range sriovArray {
+			// This is a single Sriov Configuration
+			for name, value := range sriovRenderData {
+				data.Data[fmt.Sprintf("Sriov%s", name)] = value
+			}
+
+			manifests, err = bindatautil.RenderDir(filepath.Join(ManifestPath, "sriov"), &data)
+			if err != nil {
+				log.Error(err, "Failed to render SRIOV manifests : %v")
+				return reconcile.Result{}, err
+			}
+			objs = append(objs, manifests...)
+		}
+	}
 
 	// Apply the objects to the cluster
 	for _, obj := range objs {
@@ -310,6 +343,22 @@ func getRenderData(ctx context.Context, client client.Client, instance *computen
 		return data, err
 	}
 	data.Data["RhcosImageUrl"] = providerData["image"]["url"]
+
+	sriovArray := []map[string]interface{}{}
+
+	for _, sriovConfig := range instance.Spec.Sriov {
+		v := reflect.ValueOf(sriovConfig)
+
+		sriovMap := map[string]interface{}{}
+
+		for i := 0; i < v.Type().NumField(); i++ {
+			sriovMap[v.Type().Field(i).Name] = v.Field(i).Interface()
+		}
+
+		sriovArray = append(sriovArray, sriovMap)
+	}
+
+	data.Data["Sriov"] = sriovArray
 
 	return data, nil
 }
@@ -897,28 +946,30 @@ func updateMachineDeletionSelection(c client.Client, instance *computenodev1alph
 	return nil
 }
 
-func ensureMachineSetSync(c client.Client, instance *computenodev1alpha1.ComputeNodeOpenStack) error {
+func ensureMachineSetSync(c client.Client, instance *computenodev1alpha1.ComputeNodeOpenStack) (int32, error) {
 	// get replicas at the openshift-machine-api machineset
 	workerMachineSet := &machinev1beta1.MachineSet{}
 	machineSetName := instance.Spec.ClusterName + "-" + instance.Spec.RoleName
+	var currentCount int32
 	err := c.Get(context.TODO(), types.NamespacedName{Name: machineSetName, Namespace: "openshift-machine-api"}, workerMachineSet)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info(fmt.Sprintf("Machineset not found, recreate it: %s osp-worker nodes: %d", machineSetName, instance.Spec.Workers))
 		if err := c.Update(context.TODO(), instance); err != nil {
-			return err
+			return currentCount, err
 		}
 	} else if err != nil {
-		return err
+		return currentCount, err
 	} else {
+		currentCount = workerMachineSet.Status.AvailableReplicas
 		if *workerMachineSet.Spec.Replicas != instance.Spec.Workers {
 			// MachineSet has been updated, force CRD re-sync to match the machineset replicas
 			instance.Spec.Workers = *workerMachineSet.Spec.Replicas
 			if err := c.Update(context.TODO(), instance); err != nil {
-				return err
+				return currentCount, err
 			}
 		}
 	}
-	return nil
+	return currentCount, nil
 }
 
 func addToBeRemovedTaint(kclient kubernetes.Interface, node corev1.Node) error {
