@@ -23,7 +23,11 @@ spec:
     mechanismDrivers: ""
     servicePlugins: ""
     sriov:
-      devName: "test"
+    - interface: eno2
+      mtu: 9000
+      numVfs: 64
+      deviceType: vfio-pci
+      network: sriov-phy1
   infraDaemonSets:
   - name: multus
     namespace: openshift-multus

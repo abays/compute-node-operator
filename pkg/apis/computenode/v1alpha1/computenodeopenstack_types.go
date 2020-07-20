@@ -36,8 +36,6 @@ type ComputeNodeOpenStackSpec struct {
 	Network NeutronNetwork `json:"network,omitempty"`
 	// Performance configuration
 	Performance PerformanceConfig `json:"performance,omitempty"`
-	// Sriov configuration, one item per interface
-	Sriov []SriovConfig `json:"sriov,omitempty"`
 }
 
 // InfraDaemonSet defines the daemon set required
@@ -77,6 +75,8 @@ type NeutronNetwork struct {
 	BridgeMappings   string `json:"bridgeMappings,omitempty"`
 	MechanishDrivers string `json:"mechanismDrivers,omitempty"`
 	ServicePlugings  string `json:"servicePlugins,omitempty"`
+	// Sriov configuration, one item per interface
+	Sriov []SriovConfig `json:"sriov,omitempty"`
 }
 
 // PerformanceConfig defines the OS tuning parameters

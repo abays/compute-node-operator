@@ -200,6 +200,13 @@ func (r *ReconcileComputeNodeOpenStack) Reconcile(request reconcile.Request) (re
 		return reconcile.Result{}, err
 	}
 
+	// Needed for SRIOV considerations in templates, because you do not want to attempt creating
+	// SriovNetworkNodePolicy resources if there are no nodes available in this role's machineset.
+	// Otherwise the SRIOV operator will throw an error when trying to apply any SriovNetworkNodePolicy
+	// that targets the nodes with the role (as it will find no nodes available, which it considers
+	// an error)
+	data.Data["AvailableNodeCount"] = nodeCount
+
 	// Generate the Worker objects
 	objs := []*uns.Unstructured{}
 	manifests, err := bindatautil.RenderDir(filepath.Join(ManifestPath, "worker-osp"), &data)
@@ -224,27 +231,6 @@ func (r *ReconcileComputeNodeOpenStack) Reconcile(request reconcile.Request) (re
 	// 	return reconcile.Result{}, err
 	// }
 	// objs = append(objs, manifests...)
-
-	// Generate SRIOV objects
-	// HACK: Extract the SRIOV data array and turn it into singular Sriov<Field> template values.
-	//       Do not attempt if there are no nodes available in this role's machineset, otherwise the
-	//       SRIOV operator will throw an error when trying to apply any SriovNetworkNodePolicy that
-	//       targets the nodes with the role
-	if _, ok := data.Data["Sriov"].([]map[string]interface{}); ok && nodeCount > 0 {
-		// for _, sriovRenderData := range sriovArray {
-		// 	// This is a single Sriov Configuration
-		// 	for name, value := range sriovRenderData {
-		// 		data.Data[fmt.Sprintf("Sriov%s", name)] = value
-		// 	}
-
-		manifests, err = bindatautil.RenderDir(filepath.Join(ManifestPath, "sriov"), &data)
-		if err != nil {
-			log.Error(err, "Failed to render SRIOV manifests : %v")
-			return reconcile.Result{}, err
-		}
-		objs = append(objs, manifests...)
-		// }
-	}
 
 	// Apply the objects to the cluster
 	for _, obj := range objs {
@@ -344,21 +330,8 @@ func getRenderData(ctx context.Context, client client.Client, instance *computen
 	}
 	data.Data["RhcosImageUrl"] = providerData["image"]["url"]
 
-	// sriovArray := []map[string]interface{}{}
-
-	// for _, sriovConfig := range instance.Spec.Sriov {
-	// 	v := reflect.ValueOf(sriovConfig)
-
-	// 	sriovMap := map[string]interface{}{}
-
-	// 	for i := 0; i < v.Type().NumField(); i++ {
-	// 		sriovMap[v.Type().Field(i).Name] = v.Field(i).Interface()
-	// 	}
-
-	// 	sriovArray = append(sriovArray, sriovMap)
-	// }
-
-	data.Data["Sriov"] = instance.Spec.Sriov
+	// Set SriovConfig data
+	data.Data["Sriov"] = instance.Spec.Network.Sriov
 
 	return data, nil
 }
