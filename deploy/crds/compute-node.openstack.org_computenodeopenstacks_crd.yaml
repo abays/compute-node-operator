@@ -163,17 +163,6 @@ spec:
             performance:
               description: Performance configuration
               properties:
-                cpu:
-                  description: CpuConfig defines CPU configuration parameters
-                  properties:
-                    isolated:
-                      type: string
-                    reserved:
-                      type: string
-                  required:
-                  - isolated
-                  - reserved
-                  type: object
                 hugepages:
                   description: HugepagesConfig defines the hugepages parameters
                   properties:

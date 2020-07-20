@@ -120,6 +120,7 @@ rules:
   - machine.openshift.io
   - machineconfiguration.openshift.io
   - sriovnetwork.openshift.io
+  - performance.openshift.io
   resources:
     - '*'
   verbs:

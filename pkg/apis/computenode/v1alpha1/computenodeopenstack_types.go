@@ -82,19 +82,12 @@ type NeutronNetwork struct {
 // PerformanceConfig defines the OS tuning parameters
 type PerformanceConfig struct {
 	Hugepages HugepagesConfig `json:"hugepages,omitempty"`
-	Cpu       CpuConfig       `json:"cpu,omitempty"`
 }
 
 // HugepagesConfig defines the hugepages parameters
 type HugepagesConfig struct {
 	DefaultHugepagesSize string              `json:"defaultHugepagesSize"`
 	Pages                []map[string]string `json:"pages,omitempty"`
-}
-
-// CpuConfig defines CPU configuration parameters
-type CpuConfig struct {
-	Isolated string `json:"isolated"`
-	Reserved string `json:"reserved"`
 }
 
 // SriovConfig defines SRIOV config parameters, such as nic information

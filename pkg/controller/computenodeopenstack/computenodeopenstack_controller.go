@@ -330,6 +330,17 @@ func getRenderData(ctx context.Context, client client.Client, instance *computen
 	}
 	data.Data["RhcosImageUrl"] = providerData["image"]["url"]
 
+	// Set PerformanceProfile data not handled beforehand via other parameters
+	data.Data["EnableHugepages"] = false
+	data.Data["HugepagesDefaultSize"] = ""
+	data.Data["HugepagesPages"] = []map[string]string{}
+
+	if instance.Spec.Performance.Hugepages.DefaultHugepagesSize != "" || len(instance.Spec.Performance.Hugepages.Pages) != 0 {
+		data.Data["EnableHugepages"] = true
+		data.Data["HugepagesDefaultSize"] = instance.Spec.Performance.Hugepages.DefaultHugepagesSize
+		data.Data["HugepagesPages"] = instance.Spec.Performance.Hugepages.Pages
+	}
+
 	// Set SriovConfig data
 	data.Data["Sriov"] = instance.Spec.Network.Sriov
 
