@@ -230,20 +230,20 @@ func (r *ReconcileComputeNodeOpenStack) Reconcile(request reconcile.Request) (re
 	//       Do not attempt if there are no nodes available in this role's machineset, otherwise the
 	//       SRIOV operator will throw an error when trying to apply any SriovNetworkNodePolicy that
 	//       targets the nodes with the role
-	if sriovArray, ok := data.Data["Sriov"].([]map[string]interface{}); ok && nodeCount > 0 {
-		for _, sriovRenderData := range sriovArray {
-			// This is a single Sriov Configuration
-			for name, value := range sriovRenderData {
-				data.Data[fmt.Sprintf("Sriov%s", name)] = value
-			}
+	if _, ok := data.Data["Sriov"].([]map[string]interface{}); ok && nodeCount > 0 {
+		// for _, sriovRenderData := range sriovArray {
+		// 	// This is a single Sriov Configuration
+		// 	for name, value := range sriovRenderData {
+		// 		data.Data[fmt.Sprintf("Sriov%s", name)] = value
+		// 	}
 
-			manifests, err = bindatautil.RenderDir(filepath.Join(ManifestPath, "sriov"), &data)
-			if err != nil {
-				log.Error(err, "Failed to render SRIOV manifests : %v")
-				return reconcile.Result{}, err
-			}
-			objs = append(objs, manifests...)
+		manifests, err = bindatautil.RenderDir(filepath.Join(ManifestPath, "sriov"), &data)
+		if err != nil {
+			log.Error(err, "Failed to render SRIOV manifests : %v")
+			return reconcile.Result{}, err
 		}
+		objs = append(objs, manifests...)
+		// }
 	}
 
 	// Apply the objects to the cluster
@@ -344,21 +344,21 @@ func getRenderData(ctx context.Context, client client.Client, instance *computen
 	}
 	data.Data["RhcosImageUrl"] = providerData["image"]["url"]
 
-	sriovArray := []map[string]interface{}{}
+	// sriovArray := []map[string]interface{}{}
 
-	for _, sriovConfig := range instance.Spec.Sriov {
-		v := reflect.ValueOf(sriovConfig)
+	// for _, sriovConfig := range instance.Spec.Sriov {
+	// 	v := reflect.ValueOf(sriovConfig)
 
-		sriovMap := map[string]interface{}{}
+	// 	sriovMap := map[string]interface{}{}
 
-		for i := 0; i < v.Type().NumField(); i++ {
-			sriovMap[v.Type().Field(i).Name] = v.Field(i).Interface()
-		}
+	// 	for i := 0; i < v.Type().NumField(); i++ {
+	// 		sriovMap[v.Type().Field(i).Name] = v.Field(i).Interface()
+	// 	}
 
-		sriovArray = append(sriovArray, sriovMap)
-	}
+	// 	sriovArray = append(sriovArray, sriovMap)
+	// }
 
-	data.Data["Sriov"] = sriovArray
+	data.Data["Sriov"] = instance.Spec.Sriov
 
 	return data, nil
 }

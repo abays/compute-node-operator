@@ -1,16 +1,20 @@
+{{ $workerOspRole := .WorkerOspRole }}
+{{ range .Sriov }}
+---
 apiVersion: sriovnetwork.openshift.io/v1
 kind: SriovNetworkNodePolicy
 metadata:
-  name: sriov-policy-{{ .WorkerOspRole }}-{{ .SriovInterface }}
+  name: sriov-policy-{{ $workerOspRole }}-{{ .Interface }}
   namespace: openshift-sriov-network-operator
 spec:
-  deviceType: {{ .SriovDeviceType }}
-  mtu: {{ .SriovMtu }}
+  deviceType: {{ .DeviceType }}
+  mtu: {{ .Mtu }}
   nicSelector:
     pfNames:
-    - {{ .SriovInterface }}
+    - {{ .Interface }}
   nodeSelector:
-    node-role.kubernetes.io/{{ .WorkerOspRole }}: ""
-  numVfs: {{ .SriovNumVfs }}
+    node-role.kubernetes.io/{{ $workerOspRole }}: ""
+  numVfs: {{ .NumVfs }}
   priority: 5
-  resourceName: sriovnic_{{ .SriovInterface }}
+  resourceName: sriovnic_{{ .Interface }}
+{{ end }}
