@@ -5,24 +5,24 @@ metadata:
   name: performance-profile-{{ .WorkerOspRole }}
   namespace: openstack
 spec:
-{{ if and (not (eq .NovaComputeCPUDedicatedSet "")) (not (eq .NovaComputeCPUSharedSet ""))}}
+  {{ if and (not (eq .NovaComputeCPUDedicatedSet "")) (not (eq .NovaComputeCPUSharedSet ""))}}
   cpu:
     isolated: "{{ .NovaComputeCPUDedicatedSet }}"
     reserved: "{{ .NovaComputeCPUSharedSet }}"
-{{ end }}
+  {{ end }}
   hugepages:
-{{ if not (eq .HugepagesDefaultSize "") }}
+  {{ if not (eq .HugepagesDefaultSize "") }}
     defaultHugepagesSize: "{{ .HugepagesDefaultSize }}"
-{{ end }}
-{{ if not (eq (len .HugepagesPages) 0) }}
+  {{ end }}
+  {{ if not (eq (len .HugepagesPages) 0) }}
     pages:
-{{ range $i, $m := .HugepagesPages }}
+    {{ range $i, $m := .HugepagesPages }}
     - size: "{{ $m.size }}"
       count: {{ $m.count }}
-{{ end }}
-{{ else }}
+    {{ end }}
+  {{ else }}
     pages: []
-{{ end }}
+  {{ end }}
   realTimeKernel:
     enabled: false 
   nodeSelector:
