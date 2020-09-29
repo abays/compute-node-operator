@@ -1,0 +1,30 @@
+{{ if or .Isolcpus .EnableHugepages }}
+apiVersion: performance.openshift.io/v1alpha1
+kind: PerformanceProfile
+metadata:
+  name: performance-profile-{{ .WorkerOspRole }}
+  namespace: openshift-performance-addon
+spec:
+  {{ if and (not (eq .NovaComputeCPUDedicatedSet "")) (not (eq .NovaComputeCPUSharedSet ""))}}
+  cpu:
+    isolated: "{{ .NovaComputeCPUDedicatedSet }}"
+    reserved: "{{ .NovaComputeCPUSharedSet }}"
+  {{ end }}
+  hugepages:
+  {{ if not (eq .HugepagesDefaultSize "") }}
+    defaultHugepagesSize: "{{ .HugepagesDefaultSize }}"
+  {{ end }}
+  {{ if not (eq (len .HugepagesPages) 0) }}
+    pages:
+    {{ range $i, $m := .HugepagesPages }}
+    - size: "{{ $m.size }}"
+      count: {{ $m.count }}
+    {{ end }}
+  {{ else }}
+    pages: []
+  {{ end }}
+  realTimeKernel:
+    enabled: false 
+  nodeSelector:
+    node-role.kubernetes.io/{{ .WorkerOspRole }}: ""
+{{ end }}

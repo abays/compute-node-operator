@@ -24,7 +24,22 @@ spec:
     mechanismDrivers: ""
     servicePlugins: ""
     sriov:
-      devName: "test"
+    - interface: eno2
+      mtu: 9000
+      numVfs: 64
+      deviceType: vfio-pci
+      network: sriov-phy1
+    - interface: eno3
+      mtu: 9000
+      numVfs: 32
+      deviceType: netdevice
+      network: sriov-phy2
+  performance:
+    hugepages:
+      defaultHugepagesSize: "1G"
+      pages:
+      - size: "1G"
+        count: "16"
 # needed if openshift-sdn is not running
 #  infraDaemonSets:
 #  - name: multus
