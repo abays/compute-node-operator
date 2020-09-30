@@ -3,7 +3,6 @@ apiVersion: performance.openshift.io/v1alpha1
 kind: PerformanceProfile
 metadata:
   name: performance-profile-{{ .WorkerOspRole }}
-  namespace: openshift-performance-addon
 spec:
   {{ if and (not (eq .NovaComputeCPUDedicatedSet "")) (not (eq .NovaComputeCPUSharedSet ""))}}
   cpu:

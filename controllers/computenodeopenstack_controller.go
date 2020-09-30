@@ -1507,19 +1507,19 @@ func deleteOwnerRefLabeledObjects(r *ComputeNodeOpenStackReconciler, instance *c
 		log.Info(fmt.Sprintf("MachineConfig deleted: name %s - %s", mc.Name, mc.UID))
 	}
 
-	// delete performanceprofiles in openshift-performance-addon namespace
-	performanceProfiles, err := computenodeopenstack.GetPerformanceProfilesWithLabel(r.Client, instance, labelSelectorMap, "openshift-performance-addon")
+	// delete performanceprofiles, not namespaced
+	performanceProfiles, err := computenodeopenstack.GetPerformanceProfilesWithLabel(r.Client, instance, labelSelectorMap)
 	if err != nil {
 		return err
 	}
 	for idx := range performanceProfiles.Items {
-		snnp := &performanceProfiles.Items[idx]
+		pp := &performanceProfiles.Items[idx]
 
-		err = r.Client.Delete(context.Background(), snnp, &client.DeleteOptions{})
+		err = r.Client.Delete(context.Background(), pp, &client.DeleteOptions{})
 		if err != nil {
 			return err
 		}
-		log.Info(fmt.Sprintf("PerformancePorifle deleted: name %s - %s", snnp.Name, snnp.UID))
+		log.Info(fmt.Sprintf("PerformanceProfile deleted: name %s - %s", pp.Name, pp.UID))
 	}
 
 	// delete sriovnetworknodepolicies in openshift-sriov-network-operator namespace
