@@ -9,10 +9,9 @@ import (
 )
 
 // GetPerformanceProfilesWithLabel - Returns list of performanceprofiles labeled with labelSelector
-func GetPerformanceProfilesWithLabel(c client.Client, instance *computenodev1alpha1.ComputeNodeOpenStack, labelSelector map[string]string, namespace string) (*performancev1alpha1.PerformanceProfileList, error) {
+func GetPerformanceProfilesWithLabel(c client.Client, instance *computenodev1alpha1.ComputeNodeOpenStack, labelSelector map[string]string) (*performancev1alpha1.PerformanceProfileList, error) {
 	performanceProfiles := &performancev1alpha1.PerformanceProfileList{}
 	listOpts := []client.ListOption{
-		client.InNamespace(namespace),
 		client.MatchingLabels(labelSelector),
 	}
 	if err := c.List(context.Background(), performanceProfiles, listOpts...); err != nil {
