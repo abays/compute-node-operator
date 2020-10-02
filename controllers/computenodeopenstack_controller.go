@@ -42,7 +42,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	performancev1alpha1 "github.com/openshift-kni/performance-addon-operators/pkg/apis/performance/v1alpha1"
 	machinev1beta1 "github.com/openshift/cluster-api/pkg/apis/machine/v1beta1"
 	sriovnetworkv1 "github.com/openshift/sriov-network-operator/pkg/apis/sriovnetwork/v1"
 	computenodev1alpha1 "github.com/openstack-k8s-operators/compute-node-operator/api/v1alpha1"
@@ -217,6 +216,62 @@ func (r *ComputeNodeOpenStackReconciler) Reconcile(req ctrl.Request) (ctrl.Resul
 	// an error)
 	data.Data["AvailableNodeCount"] = nodeCount
 
+	ensureSriovPerfRemovalSync := func(c client.Client, instance *computenodev1alpha1.ComputeNodeOpenStack, data bindatautil.RenderData) error {
+		labelSelectorMap := map[string]string{
+			ownerUIDLabelSelector:       string(instance.UID),
+			ownerNameSpaceLabelSelector: instance.Namespace,
+			ownerNameLabelSelector:      instance.Name,
+		}
+
+		// Get all SRIOV policies tied to this instance
+		sriovNetworkNodePolicies, err := computenodeopenstack.GetSriovNetworkNodePoliciesWithLabel(r.Client, instance, labelSelectorMap, "openshift-sriov-network-operator")
+		if err != nil {
+			return err
+		}
+
+		findInterface := func(instance *computenodev1alpha1.ComputeNodeOpenStack, interfaceName string) bool {
+			for _, sriovConfig := range instance.Spec.Network.Sriov {
+				if sriovConfig.Interface == interfaceName {
+					return true
+				}
+			}
+
+			return false
+		}
+
+		// Iterate through SRIOV policies and delete those that have no interfaces represented
+		// in the instance's Network.Sriov spec
+		for idx := range sriovNetworkNodePolicies.Items {
+			snnp := &sriovNetworkNodePolicies.Items[idx]
+
+			foundInterface := false
+
+			for _, interfaceName := range snnp.Spec.NicSelector.PfNames {
+				foundInterface = findInterface(instance, interfaceName)
+
+				if foundInterface {
+					break
+				}
+			}
+
+			if !foundInterface {
+				err = r.Client.Delete(context.Background(), snnp, &client.DeleteOptions{})
+				if err != nil {
+					return err
+				}
+				log.Info(fmt.Sprintf("Deleting SriovNetworkNodePolicy that does not match instance SRIOV interfaces: name %s - %s", snnp.Name, snnp.UID))
+			}
+		}
+
+		return nil
+	}
+
+	// Handle SRIOV and Performance removal (if any -- add/update handled by "Worker" template logic below)
+	err = ensureSriovPerfRemovalSync(r.Client, instance, data)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	// if run from image OPERATOR_BINDATA env has the bindata
 	manifestPath, found := os.LookupEnv(manifestEnvVar)
 	if found {
@@ -329,33 +384,33 @@ func (r *ComputeNodeOpenStackReconciler) SetupWithManager(mgr ctrl.Manager) erro
 	})
 
 	// watch for PerformanceProfile with compute-node-operator CR owner ref
-	ospPerformanceProfileFn := handler.ToRequestsFunc(func(o handler.MapObject) []reconcile.Request {
-		cc := mgr.GetClient()
-		result := []reconcile.Request{}
-		snnp := &performancev1alpha1.PerformanceProfile{}
-		key := client.ObjectKey{Namespace: o.Meta.GetNamespace(), Name: o.Meta.GetName()}
-		err := cc.Get(context.Background(), key, snnp)
-		if err != nil && !errors.IsNotFound(err) {
-			log.Error(err, "Unable to retrieve PerformanceProfile %v")
-			return nil
-		}
+	// ospPerformanceProfileFn := handler.ToRequestsFunc(func(o handler.MapObject) []reconcile.Request {
+	// 	cc := mgr.GetClient()
+	// 	result := []reconcile.Request{}
+	// 	snnp := &performancev1alpha1.PerformanceProfile{}
+	// 	key := client.ObjectKey{Namespace: o.Meta.GetNamespace(), Name: o.Meta.GetName()}
+	// 	err := cc.Get(context.Background(), key, snnp)
+	// 	if err != nil && !errors.IsNotFound(err) {
+	// 		log.Error(err, "Unable to retrieve PerformanceProfile %v")
+	// 		return nil
+	// 	}
 
-		label := snnp.ObjectMeta.GetLabels()
-		// verify object has ownerUIDLabelSelector
-		if uid, ok := label[ownerUIDLabelSelector]; ok {
-			log.Info(fmt.Sprintf("PerformanceProfile object %s marked with OSP owner ref: %s", o.Meta.GetName(), uid))
-			// return namespace and Name of CR
-			name := client.ObjectKey{
-				Namespace: label[ownerNameSpaceLabelSelector],
-				Name:      label[ownerNameLabelSelector],
-			}
-			result = append(result, reconcile.Request{NamespacedName: name})
-		}
-		if len(result) > 0 {
-			return result
-		}
-		return nil
-	})
+	// 	label := snnp.ObjectMeta.GetLabels()
+	// 	// verify object has ownerUIDLabelSelector
+	// 	if uid, ok := label[ownerUIDLabelSelector]; ok {
+	// 		log.Info(fmt.Sprintf("PerformanceProfile object %s marked with OSP owner ref: %s", o.Meta.GetName(), uid))
+	// 		// return namespace and Name of CR
+	// 		name := client.ObjectKey{
+	// 			Namespace: label[ownerNameSpaceLabelSelector],
+	// 			Name:      label[ownerNameLabelSelector],
+	// 		}
+	// 		result = append(result, reconcile.Request{NamespacedName: name})
+	// 	}
+	// 	if len(result) > 0 {
+	// 		return result
+	// 	}
+	// 	return nil
+	// })
 
 	// watch for SriovNetworkNodePolicy with compute-node-operator CR owner ref
 	ospSriovNetworkNodePolicyFn := handler.ToRequestsFunc(func(o handler.MapObject) []reconcile.Request {
@@ -394,10 +449,10 @@ func (r *ComputeNodeOpenStackReconciler) SetupWithManager(mgr ctrl.Manager) erro
 			&handler.EnqueueRequestsFromMapFunc{
 				ToRequests: ospMachineSetFn,
 			}).
-		Watches(&source.Kind{Type: &performancev1alpha1.PerformanceProfile{}},
-			&handler.EnqueueRequestsFromMapFunc{
-				ToRequests: ospPerformanceProfileFn,
-			}).
+		// Watches(&source.Kind{Type: &performancev1alpha1.PerformanceProfile{}},
+		// 	&handler.EnqueueRequestsFromMapFunc{
+		// 		ToRequests: ospPerformanceProfileFn,
+		// 	}).
 		Watches(&source.Kind{Type: &sriovnetworkv1.SriovNetworkNodePolicy{}},
 			&handler.EnqueueRequestsFromMapFunc{
 				ToRequests: ospSriovNetworkNodePolicyFn,
@@ -1432,6 +1487,7 @@ func deleteAllBlockerPodFinalizer(r *ComputeNodeOpenStackReconciler, instance *c
    - user-data secret, openshift-machine-api namespace
    - machineconfigpool, not namespaced
    - machineconfig, not namespaced
+   - sriovnetworknodepolicy, openshift-sriov-network-operator namespace
 */
 func deleteOwnerRefLabeledObjects(r *ComputeNodeOpenStackReconciler, instance *computenodev1alpha1.ComputeNodeOpenStack) error {
 	labelSelectorMap := map[string]string{
@@ -1505,21 +1561,6 @@ func deleteOwnerRefLabeledObjects(r *ComputeNodeOpenStackReconciler, instance *c
 			return err
 		}
 		log.Info(fmt.Sprintf("MachineConfig deleted: name %s - %s", mc.Name, mc.UID))
-	}
-
-	// delete performanceprofiles, not namespaced
-	performanceProfiles, err := computenodeopenstack.GetPerformanceProfilesWithLabel(r.Client, instance, labelSelectorMap)
-	if err != nil {
-		return err
-	}
-	for idx := range performanceProfiles.Items {
-		pp := &performanceProfiles.Items[idx]
-
-		err = r.Client.Delete(context.Background(), pp, &client.DeleteOptions{})
-		if err != nil {
-			return err
-		}
-		log.Info(fmt.Sprintf("PerformanceProfile deleted: name %s - %s", pp.Name, pp.UID))
 	}
 
 	// delete sriovnetworknodepolicies in openshift-sriov-network-operator namespace
