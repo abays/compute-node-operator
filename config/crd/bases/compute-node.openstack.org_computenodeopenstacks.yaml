@@ -120,20 +120,41 @@ spec:
                     properties:
                       deviceType:
                         type: string
-                      interface:
-                        type: string
                       mtu:
                         format: int32
                         type: integer
                       network:
                         type: string
+                      nicSelector:
+                        description: SriovNicSelector defines a particular NIC to
+                          configure
+                        properties:
+                          deviceID:
+                            description: The device hex code of SR-IoV device. Allowed
+                              value "158b", "1015", "1017".
+                            type: string
+                          pfNames:
+                            description: Name of SR-IoV PF.
+                            items:
+                              type: string
+                            type: array
+                          rootDevices:
+                            description: PCI address of SR-IoV PF.
+                            items:
+                              type: string
+                            type: array
+                          vendor:
+                            description: The vendor hex code of SR-IoV device. Allowed
+                              value "8086", "15b3".
+                            type: string
+                        type: object
                       numVfs:
                         format: int32
                         type: integer
                     required:
                     - deviceType
-                    - interface
                     - network
+                    - nicSelector
                     type: object
                   type: array
               required:

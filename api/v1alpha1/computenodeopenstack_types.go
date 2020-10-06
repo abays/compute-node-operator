@@ -98,11 +98,23 @@ type NeutronNetwork struct {
 
 // SriovConfig defines SRIOV config parameters, such as nic information.
 type SriovConfig struct {
-	Interface  string `json:"interface"`
-	NumVfs     int32  `json:"numVfs,omitempty"`
-	Network    string `json:"network"`
-	DeviceType string `json:"deviceType"`
-	Mtu        int32  `json:"mtu,omitempty"`
+	NicSelector SriovNicSelector `json:"nicSelector"`
+	NumVfs      int32            `json:"numVfs,omitempty"`
+	Network     string           `json:"network"`
+	DeviceType  string           `json:"deviceType"`
+	Mtu         int32            `json:"mtu,omitempty"`
+}
+
+// SriovNicSelector defines a particular NIC to configure
+type SriovNicSelector struct {
+	// The vendor hex code of SR-IoV device. Allowed value "8086", "15b3".
+	Vendor string `json:"vendor,omitempty"`
+	// The device hex code of SR-IoV device. Allowed value "158b", "1015", "1017".
+	DeviceID string `json:"deviceID,omitempty"`
+	// PCI address of SR-IoV PF.
+	RootDevices []string `json:"rootDevices,omitempty"`
+	// Name of SR-IoV PF.
+	PfNames []string `json:"pfNames,omitempty"`
 }
 
 // NodeToDelete defines the name of the node to delete and if automatic drain is needed

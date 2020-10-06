@@ -24,15 +24,19 @@ spec:
     mechanismDrivers: ""
     servicePlugins: ""
     sriov:
-    - interface: eno2
+    - nicSelector: 
+        pfNames:
+        - enp1s0
       mtu: 9000
-      numVfs: 64
+      numVfs: 5
       deviceType: vfio-pci
       network: sriov-phy1
-    - interface: eno3
+    - nicSelector: 
+        vendor: "1af4"
+        rootDevices: ['0000:01:00.0',]
       mtu: 9000
-      numVfs: 32
-      deviceType: netdevice
+      numVfs: 5
+      deviceType: vfio-pci
       network: sriov-phy2
 # needed if openshift-sdn is not running
 #  infraDaemonSets:

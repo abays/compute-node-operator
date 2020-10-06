@@ -216,7 +216,7 @@ func (r *ComputeNodeOpenStackReconciler) Reconcile(req ctrl.Request) (ctrl.Resul
 	// an error)
 	data.Data["AvailableNodeCount"] = nodeCount
 
-	ensureSriovPerfRemovalSync := func(c client.Client, instance *computenodev1alpha1.ComputeNodeOpenStack, data bindatautil.RenderData) error {
+	ensureSriovRemovalSync := func(c client.Client, instance *computenodev1alpha1.ComputeNodeOpenStack, data bindatautil.RenderData) error {
 		labelSelectorMap := map[string]string{
 			ownerUIDLabelSelector:       string(instance.UID),
 			ownerNameSpaceLabelSelector: instance.Namespace,
@@ -229,10 +229,15 @@ func (r *ComputeNodeOpenStackReconciler) Reconcile(req ctrl.Request) (ctrl.Resul
 			return err
 		}
 
-		findInterface := func(instance *computenodev1alpha1.ComputeNodeOpenStack, interfaceName string) bool {
+		findInterface := func(instance *computenodev1alpha1.ComputeNodeOpenStack, sriovPolicyNicSelector sriovnetworkv1.SriovNetworkNicSelector) bool {
 			for _, sriovConfig := range instance.Spec.Network.Sriov {
-				if sriovConfig.Interface == interfaceName {
-					return true
+				nicSelector := sriovConfig.NicSelector
+
+				if nicSelector.Vendor == sriovPolicyNicSelector.Vendor && nicSelector.DeviceID == sriovPolicyNicSelector.Vendor {
+					if reflect.DeepEqual(nicSelector.PfNames, sriovPolicyNicSelector.PfNames) &&
+						reflect.DeepEqual(nicSelector.RootDevices, sriovPolicyNicSelector.RootDevices) {
+						return true
+					}
 				}
 			}
 
@@ -244,17 +249,7 @@ func (r *ComputeNodeOpenStackReconciler) Reconcile(req ctrl.Request) (ctrl.Resul
 		for idx := range sriovNetworkNodePolicies.Items {
 			snnp := &sriovNetworkNodePolicies.Items[idx]
 
-			foundInterface := false
-
-			for _, interfaceName := range snnp.Spec.NicSelector.PfNames {
-				foundInterface = findInterface(instance, interfaceName)
-
-				if foundInterface {
-					break
-				}
-			}
-
-			if !foundInterface {
+			if !findInterface(instance, snnp.Spec.NicSelector) {
 				err = r.Client.Delete(context.Background(), snnp, &client.DeleteOptions{})
 				if err != nil {
 					return err
@@ -266,8 +261,8 @@ func (r *ComputeNodeOpenStackReconciler) Reconcile(req ctrl.Request) (ctrl.Resul
 		return nil
 	}
 
-	// Handle SRIOV and Performance removal (if any -- add/update handled by "Worker" template logic below)
-	err = ensureSriovPerfRemovalSync(r.Client, instance, data)
+	// Handle SRIOV removal (if any -- add/update handled by "Worker" template logic below)
+	err = ensureSriovRemovalSync(r.Client, instance, data)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

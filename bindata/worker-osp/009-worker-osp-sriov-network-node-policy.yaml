@@ -16,8 +16,20 @@ spec:
   deviceType: {{ $e.DeviceType }}
   mtu: {{ $e.Mtu }}
   nicSelector:
+    {{ if not (eq (len $e.NicSelector.PfNames) 0) }}
     pfNames:
-    - {{ $e.Interface }}
+      {{ range $k, $pf := $e.NicSelector.PfNames }}
+      - {{ $pf }}
+      {{ end }}
+    {{ end }}
+    {{ if not (eq (len $e.NicSelector.RootDevices) 0) }}
+    rootDevices:
+      {{ range $k, $rd := $e.NicSelector.RootDevices }}
+      - "{{ $rd }}"
+      {{ end }}
+    {{ end }}
+    vendor: {{ $e.NicSelector.Vendor }}
+    deviceId: {{ $e.NicSelector.DeviceId }}
   nodeSelector:
     node-role.kubernetes.io/{{ $workerOspRole }}: ""
   numVfs: {{ $e.NumVfs }}
