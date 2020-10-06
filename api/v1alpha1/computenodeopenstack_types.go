@@ -54,8 +54,6 @@ type ComputeNodeOpenStackSpec struct {
 	SelinuxDisabled bool `json:"selinuxDisabled,omitempty"`
 	// service account used to create pods
 	ServiceAccount string `json:"serviceAccount"`
-	// Performance configuration
-	Performance PerformanceConfig `json:"performance,omitempty"`
 }
 
 // InfraDaemonSet defines the daemon set required
@@ -105,17 +103,6 @@ type SriovConfig struct {
 	Network    string `json:"network"`
 	DeviceType string `json:"deviceType"`
 	Mtu        int32  `json:"mtu,omitempty"`
-}
-
-// PerformanceConfig defines the OS tuning parameters
-type PerformanceConfig struct {
-	Hugepages HugepagesConfig `json:"hugepages,omitempty"`
-}
-
-// HugepagesConfig defines the hugepages parameters
-type HugepagesConfig struct {
-	DefaultHugepagesSize string              `json:"defaultHugepagesSize"`
-	Pages                []map[string]string `json:"pages,omitempty"`
 }
 
 // NodeToDelete defines the name of the node to delete and if automatic drain is needed

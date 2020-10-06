@@ -165,24 +165,6 @@ spec:
               description: openstackclient configmap which holds information to connect
                 to OpenStack API
               type: string
-            performance:
-              description: Performance configuration
-              properties:
-                hugepages:
-                  description: HugepagesConfig defines the hugepages parameters
-                  properties:
-                    defaultHugepagesSize:
-                      type: string
-                    pages:
-                      items:
-                        additionalProperties:
-                          type: string
-                        type: object
-                      type: array
-                  required:
-                  - defaultHugepagesSize
-                  type: object
-              type: object
             roleName:
               description: Name of the worker role created for OSP computes
               type: string

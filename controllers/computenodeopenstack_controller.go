@@ -383,35 +383,6 @@ func (r *ComputeNodeOpenStackReconciler) SetupWithManager(mgr ctrl.Manager) erro
 		return nil
 	})
 
-	// watch for PerformanceProfile with compute-node-operator CR owner ref
-	// ospPerformanceProfileFn := handler.ToRequestsFunc(func(o handler.MapObject) []reconcile.Request {
-	// 	cc := mgr.GetClient()
-	// 	result := []reconcile.Request{}
-	// 	snnp := &performancev1alpha1.PerformanceProfile{}
-	// 	key := client.ObjectKey{Namespace: o.Meta.GetNamespace(), Name: o.Meta.GetName()}
-	// 	err := cc.Get(context.Background(), key, snnp)
-	// 	if err != nil && !errors.IsNotFound(err) {
-	// 		log.Error(err, "Unable to retrieve PerformanceProfile %v")
-	// 		return nil
-	// 	}
-
-	// 	label := snnp.ObjectMeta.GetLabels()
-	// 	// verify object has ownerUIDLabelSelector
-	// 	if uid, ok := label[ownerUIDLabelSelector]; ok {
-	// 		log.Info(fmt.Sprintf("PerformanceProfile object %s marked with OSP owner ref: %s", o.Meta.GetName(), uid))
-	// 		// return namespace and Name of CR
-	// 		name := client.ObjectKey{
-	// 			Namespace: label[ownerNameSpaceLabelSelector],
-	// 			Name:      label[ownerNameLabelSelector],
-	// 		}
-	// 		result = append(result, reconcile.Request{NamespacedName: name})
-	// 	}
-	// 	if len(result) > 0 {
-	// 		return result
-	// 	}
-	// 	return nil
-	// })
-
 	// watch for SriovNetworkNodePolicy with compute-node-operator CR owner ref
 	ospSriovNetworkNodePolicyFn := handler.ToRequestsFunc(func(o handler.MapObject) []reconcile.Request {
 		cc := mgr.GetClient()
@@ -536,17 +507,6 @@ func getRenderData(ctx context.Context, client client.Client, instance *computen
 		return data, err
 	}
 	data.Data["RhcosImageUrl"] = providerData["image"]["url"]
-
-	// Set PerformanceProfile data not handled beforehand via other parameters
-	data.Data["EnableHugepages"] = false
-	data.Data["HugepagesDefaultSize"] = ""
-	data.Data["HugepagesPages"] = []map[string]string{}
-
-	if instance.Spec.Performance.Hugepages.DefaultHugepagesSize != "" || len(instance.Spec.Performance.Hugepages.Pages) != 0 {
-		data.Data["EnableHugepages"] = true
-		data.Data["HugepagesDefaultSize"] = instance.Spec.Performance.Hugepages.DefaultHugepagesSize
-		data.Data["HugepagesPages"] = instance.Spec.Performance.Hugepages.Pages
-	}
 
 	// Set SriovConfig data
 	data.Data["Sriov"] = instance.Spec.Network.Sriov
