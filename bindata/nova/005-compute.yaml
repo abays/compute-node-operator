@@ -15,7 +15,7 @@ spec:
   {{ if not (eq (len .Sriov) 0) }}
   passthroughWhitelist:
     {{ range $i, $v := .Sriov }}
-    - deviceName: {{ $v.interface }}
-      physicalNetwork: {{ $v.network }}
+    - deviceName: {{ $v.Interface }}
+      physicalNetwork: {{ $v.Network }}
     {{ end }}
   {{ end }}
