@@ -12,3 +12,10 @@ spec:
   novaComputeCpuSharedSet: {{ .NovaComputeCPUSharedSet }}
   novaComputeImage: docker.io/tripleomaster/centos-binary-nova-compute:current-tripleo
   roleName: {{ .WorkerOspRole }}
+  {{ if not (eq (len .Sriov) 0) }}
+  passthroughWhitelist:
+    {{ range $i, $v := .Sriov }}
+    - deviceName: {{ $v.interface }}
+      physicalNetwork: {{ $v.network }}
+    {{ end }}
+  {{ end }}
